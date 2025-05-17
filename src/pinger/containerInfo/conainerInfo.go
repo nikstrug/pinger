@@ -1,9 +1,11 @@
 package containerinfo
 
+// Импортируем пакеты
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -15,6 +17,7 @@ import (
 	"github.com/docker/docker/client"
 )
 
+// Структура для базы данных
 type DBContainer struct {
 	ContainerID string            `json:"containerID"`
 	IP          map[string]string `json:"ip"`
@@ -23,11 +26,13 @@ type DBContainer struct {
 	Datestamp   time.Time         `json:"datestamp"`
 }
 
+// Структура для переменных окружения
 type Env struct {
 	Networks []string
 	BackURL  string
 }
 
+// Получение IP контейнеров
 func getContainerIPs(c types.Container, networkList []string) map[string]string {
 	ips := make(map[string]string)
 	for _, network := range networkList {
@@ -38,6 +43,7 @@ func getContainerIPs(c types.Container, networkList []string) map[string]string 
 	return ips
 }
 
+// Получение сетей контейнеров
 func getContainerNetworks(c types.Container, networkList []string) []string {
 	networks := []string{}
 	for _, network := range networkList {
@@ -48,6 +54,7 @@ func getContainerNetworks(c types.Container, networkList []string) []string {
 	return networks
 }
 
+// Получение контейнеров клиента, находящиеся в network
 func getNetworkContainers(cli *client.Client, network string) ([]types.Container, error) {
 	filter := filters.NewArgs()
 	filter.Add("network", network)
@@ -61,6 +68,7 @@ func getNetworkContainers(cli *client.Client, network string) ([]types.Container
 	)
 }
 
+// Получение статуса контейнеров
 func getContainerStatus(cli *client.Client, containerID string) (string, error) {
 	info, err := cli.ContainerInspect(context.Background(), containerID)
 	if err != nil {
@@ -69,6 +77,7 @@ func getContainerStatus(cli *client.Client, containerID string) (string, error) 
 	return info.State.Status, nil
 }
 
+// Собирает информацию о контейнерах и отправляет их на бэк
 func CheckContainers(cli *client.Client, env Env) {
 	allContainers := make(map[string]types.Container)
 
@@ -93,6 +102,7 @@ func CheckContainers(cli *client.Client, env Env) {
 			log.Printf("Container %s status error: %v\n", c.Names[0], err)
 			continue
 		}
+
 		containerNetworks := getContainerNetworks(c, env.Networks)
 		ips := getContainerIPs(c, env.Networks)
 		pingTime := time.Now()
@@ -116,11 +126,15 @@ func CheckContainers(cli *client.Client, env Env) {
 	}
 }
 
+// Отправляет список с информацией о контейнерах на бэк
 func sendToBack(req []DBContainer, env Env) {
-	json, err := json.Marshal(req)
+	b, err := json.Marshal(req)
 	if err != nil {
-		log.Println(err)
+		log.Println(fmt.Errorf("failed to marshall request: %w", err))
 		return
 	}
-	http.Post(env.BackURL, "application/json", bytes.NewBuffer(json))
+	if _, err := http.Post(env.BackURL, "application/json", bytes.NewBuffer(b)); err != nil {
+		log.Println(fmt.Errorf("failed to send: %w", err))
+		return
+	}
 }

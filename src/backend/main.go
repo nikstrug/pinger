@@ -1,13 +1,16 @@
 package main
 
+// Импортируем пакеты
 import (
 	"backend/database"
 	"backend/handlers"
+	"log"
 	"net/http"
 
 	"github.com/rs/cors"
 )
 
+// Главная функция
 func main() {
 	env := database.ParseEnv()
 	mux := http.NewServeMux()
@@ -20,5 +23,7 @@ func main() {
 	})
 
 	handler := c.Handler(mux)
-	http.ListenAndServe(":"+env.Port, handler)
+	if err := http.ListenAndServe(":"+env.Port, handler); err != nil {
+		log.Fatal(err)
+	}
 }

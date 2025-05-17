@@ -1,7 +1,9 @@
 package handlers
 
+// Импортируем пакеты
 import (
 	"backend/database"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log"
@@ -9,6 +11,7 @@ import (
 	"time"
 )
 
+// Структура для отправки данных на фронтенд
 type ToFront struct {
 	IP        string    `json:"ip"`
 	Status    string    `json:"status"`
@@ -16,6 +19,7 @@ type ToFront struct {
 	Datestamp time.Time `json:"datestamp"`
 }
 
+// Получение списка контейнеров из БД и отправляет информацию на фронтенд
 func ContainerList(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		log.Println("Error: wrong http method")
@@ -33,7 +37,14 @@ func ContainerList(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	defer sqlDB.Close()
+
+	defer func(sqlDB *sql.DB) {
+		err := sqlDB.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(sqlDB)
+
 	query := db.Order("timestamp ASC").Find(&conts)
 	if query.Error != nil {
 		log.Println(query.Error)
@@ -49,17 +60,20 @@ func ContainerList(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	json, err := json.Marshal(reqs)
+	b, err := json.Marshal(reqs)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
 	w.Header().Set("Access-Control-Allow-Methods", "GET")
-	w.Write(json)
+	if _, err := w.Write(b); err != nil {
+		log.Println(err)
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
+// Принимает Post запрос от пингера с информацией о контейнерах и кладет в БД
 func PutStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		log.Println("Wrong method!")
@@ -89,7 +103,12 @@ func PutStatus(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	defer sqlDB.Close()
+	defer func(sqlDB *sql.DB) {
+		err := sqlDB.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}(sqlDB)
 	err = database.SaveContainer(db, reqs)
 	if err != nil {
 		log.Println(err)

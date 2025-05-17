@@ -1,5 +1,6 @@
 package main
 
+// Импортируем пакеты
 import (
 	"context"
 	"log"
@@ -11,17 +12,16 @@ import (
 	"github.com/docker/docker/client"
 )
 
+// Парсим переменные окружения
 func parseEnv() containerinfo.Env {
 	var env containerinfo.Env
 	networksEnv := os.Getenv("DOCKER_NETWORKS")
 	if networksEnv == "" {
 		log.Fatal("DOCKER_NETWORKS environment variable is required")
-		os.Exit(1)
 	}
 	backendUrl := os.Getenv("BACKEND_URL")
 	if backendUrl == "" {
 		log.Fatal("BACKEND_URL environment variable is required")
-		os.Exit(1)
 	}
 	networkList := strings.Split(networksEnv, ",")
 	log.Printf("Monitoring networks: %v\n", networkList)
@@ -32,6 +32,7 @@ func parseEnv() containerinfo.Env {
 	return env
 }
 
+// Главная функция
 func main() {
 	env := parseEnv()
 	for {
@@ -45,6 +46,8 @@ func main() {
 		log.Println("Successfully connected to Docker API")
 		containerinfo.CheckContainers(cli, env)
 		time.Sleep(5 * time.Second)
-		cli.Close()
+		if err = cli.Close(); err != nil {
+			log.Fatal("Docker close error: ", err)
+		}
 	}
 }
