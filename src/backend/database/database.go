@@ -17,6 +17,8 @@ type Request struct {
 	ContainerID string            `json:"containerID"`
 	IP          map[string]string `json:"ip"`
 	Status      string            `json:"status"`
+	CPU         float64           `json:"cpu"`
+	Memory      uint64            `json:"memory"`
 	Timestamp   time.Time         `json:"timestamp"`
 	Datestamp   time.Time         `json:"datestamp"`
 }
@@ -27,6 +29,8 @@ type DBContainer struct {
 	ContainerID string    `gorm:"uniqueIndex;not null"`
 	IP          string    `gorm:"type:varchar(255);not null"`
 	Status      string    `gorm:"type:varchar(255);not null"`
+	CPU         float64   `gorm:"not null"`
+	Memory      uint64    `gorm:"not null"`
 	Timestamp   time.Time `gorm:"not null"`
 	Datestamp   time.Time `gorm:"not null"`
 }
@@ -96,6 +100,8 @@ func SaveContainer(db *gorm.DB, reqs []Request) error {
 		}
 		Containers[i].ContainerID = req.ContainerID
 		Containers[i].Status = req.Status
+		Containers[i].CPU = req.CPU
+		Containers[i].Memory = req.Memory
 		Containers[i].Timestamp = req.Timestamp
 		Containers[i].Datestamp = req.Datestamp
 	}
@@ -105,6 +111,8 @@ func SaveContainer(db *gorm.DB, reqs []Request) error {
 			DoUpdates: clause.Assignments(map[string]interface{}{
 				"ip":        gorm.Expr("CASE WHEN ? = 'running' THEN ? ELSE db_containers.ip END", Container.Status, Container.IP),
 				"status":    Container.Status,
+				"cpu":       Container.CPU,
+				"memory":    Container.Memory,
 				"timestamp": Container.Timestamp,
 				"datestamp": gorm.Expr("CASE WHEN ? = 'running' THEN ? ELSE db_containers.datestamp END", Container.Status, Container.Datestamp),
 			}),

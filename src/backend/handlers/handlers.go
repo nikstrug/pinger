@@ -5,6 +5,7 @@ import (
 	"backend/database"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -15,6 +16,8 @@ import (
 type ToFront struct {
 	IP        string    `json:"ip"`
 	Status    string    `json:"status"`
+	CPU       string    `json:"cpu"`
+	Memory    string    `json:"memory"`
 	Timestamp time.Time `json:"timestamp"`
 	Datestamp time.Time `json:"datestamp"`
 }
@@ -55,6 +58,8 @@ func ContainerList(w http.ResponseWriter, r *http.Request) {
 		reqs = append(reqs, ToFront{
 			IP:        conts[i].IP,
 			Status:    conts[i].Status,
+			CPU:       fmt.Sprintf("%f", conts[i].CPU),
+			Memory:    fmt.Sprintf("%d", conts[i].Memory),
 			Timestamp: conts[i].Timestamp,
 			Datestamp: conts[i].Datestamp,
 		})

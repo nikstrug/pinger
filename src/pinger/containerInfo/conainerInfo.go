@@ -22,6 +22,8 @@ type DBContainer struct {
 	ContainerID string            `json:"containerID"`
 	IP          map[string]string `json:"ip"`
 	Status      string            `json:"status"`
+	CPU         float64           `json:"cpu"`
+	Memory      uint64            `json:"memory"`
 	Timestamp   time.Time         `json:"timestamp"`
 	Datestamp   time.Time         `json:"datestamp"`
 }
@@ -77,6 +79,26 @@ func getContainerStatus(cli *client.Client, containerID string) (string, error) 
 	return info.State.Status, nil
 }
 
+func calculateCPUPercent(stats container.StatsResponse) float64 {
+	cpuDelta := float64(stats.CPUStats.CPUUsage.TotalUsage - stats.PreCPUStats.CPUUsage.TotalUsage)
+	systemDelta := float64(stats.CPUStats.SystemUsage - stats.PreCPUStats.SystemUsage)
+	return (cpuDelta / systemDelta) * 1000.0
+}
+
+func getContainerMetrics(cli *client.Client, containerID string) (float64, uint64, error) {
+	stats, err := cli.ContainerStats(context.Background(), containerID, false)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer stats.Body.Close()
+	var containerStats container.StatsResponse
+	err = json.NewDecoder(stats.Body).Decode(&containerStats)
+	if err != nil {
+		return 0, 0, err
+	}
+	return calculateCPUPercent(containerStats), containerStats.MemoryStats.Usage, nil
+}
+
 // Собирает информацию о контейнерах и отправляет их на бэк
 func CheckContainers(cli *client.Client, env Env) {
 	allContainers := make(map[string]types.Container)
@@ -105,11 +127,17 @@ func CheckContainers(cli *client.Client, env Env) {
 
 		containerNetworks := getContainerNetworks(c, env.Networks)
 		ips := getContainerIPs(c, env.Networks)
+		cpu, memory, err := getContainerMetrics(cli, c.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
 		pingTime := time.Now()
 		req = append(req, DBContainer{
 			ContainerID: c.ID,
 			IP:          ips,
 			Status:      status,
+			CPU:         cpu,
+			Memory:      memory,
 			Timestamp:   pingTime,
 			Datestamp:   pingTime,
 		})

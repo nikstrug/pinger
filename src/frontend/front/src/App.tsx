@@ -5,6 +5,8 @@ interface ContainerData {
   containerID: string;
   ip: string;
   status: string;
+  cpu: string;
+  memory: string;
   timestamp: string;
   datestamp: string;
 }
@@ -45,6 +47,8 @@ const App: React.FC = () => {
             <tr className="bg-gray-200">
               <th className="border p-2">IP</th>
               <th className="border p-2">Status</th>
+              <th className="border p-2">CPU</th>
+              <th className="border p-2">Memory</th>
               <th className="border p-2">Timestamp</th>
               <th className="border p-2">Datestamp</th>
             </tr>
@@ -53,7 +57,9 @@ const App: React.FC = () => {
             {data.map((item, index) => (
               <tr key={index} className="border">
                 <td className="border p-2">{item.ip}</td>
-                <td className={`border p-2 ${item.status === "down" ? "text-red-500" : "text-green-500"}`}>{item.status}</td>
+                <td className={`border p-2 font-semibold ${item.status === "running" ? "text-green-500" : "text-red-500"}`}>{item.status}</td>
+                <td className="border p-2">{item.cpu}</td>
+                <td className="border p-2">{item.memory}</td>
                 <td className="border p-2">{new Date(item.timestamp).toLocaleString()}</td>
                 <td className="border p-2">{new Date(item.datestamp).toLocaleString()}</td>
               </tr>
